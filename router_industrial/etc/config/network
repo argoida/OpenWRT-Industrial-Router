@@ -1,0 +1,72 @@
+config interface 'loopback'
+        option ifname 'lo'
+        option proto 'static'
+        option ipaddr '127.0.0.1'
+        option netmask '255.0.0.0'
+
+config globals 'globals'
+        option ula_prefix 'fd1d:48c4:7633::/48'
+
+config interface 'an'
+        option ifname 'eth0'
+        option type 'bridge'
+
+config interface 'wan'
+        option ifname 'br-an'
+        option proto 'dhcp'
+        option hostname 'abs_eth_serial'
+        option dns '8.8.8.8'
+
+config interface 'wan_config'
+        option ifname 'br-an'
+        option proto 'static'
+        option ipaddr '10.20.40.1'
+        option netmask '255.255.255.0'
+
+config interface 'openvpn'
+        option proto 'none'
+        option ifname 'tun0'
+
+config interface 'ipsec'
+        option proto 'none'
+        option ifname 'ipsec0'
+
+config interface 'wlan'
+        option type 'bridge'
+        option ifname 'eth0.1'
+        option proto 'static'
+        option ipaddr '192.168.3.1'
+        option netmask '255.255.255.0'
+        option ip6assign '60'
+
+config interface 'wwan'
+        option ifname 'apcli0'
+        option proto 'dhcp'
+
+config interface 'wanEth'
+        option ifname 'eth1'
+        option proto 'dhcp'
+
+config interface wanCel
+        option ifname  wanCel
+        option abs_enabled  '1'
+        option disabled  '0'
+        option device  /dev/ttyACM0
+        option abs_apn     auto
+        option apn     
+        option service umts
+        option proto   3g
+        # MAXWAIT segundo esperando o modem ficar ready
+        option maxwait   20
+        # KEEPALIVE 
+        option keepalive   5
+        # DEFAULTROUTE  usa como rota default esta conexao
+        option defaultroute   1
+        # PEERDNS usa o dns recebido da operadora celular. Se nao quiser use a option dns como na wan
+        option peerdns   1
+        option abs_username 
+        option username 
+        option abs_password 
+        option password 
+        option pincode ''
+        option abs_radio_band 511

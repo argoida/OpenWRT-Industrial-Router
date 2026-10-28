@@ -1,0 +1,41 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2011 OpenWrt.org
+
+START=99
+
+USE_PROCD=1
+PROG=/usr/bin/python
+ABS_SCRIPT=/abs/abs_status_config.py
+ABS_SCRIPT_2=/abs/abs_status_config.pyc
+# O user tem que ser o root porque o conversor serial abre a porta 23 para configuracao
+ABSUSER=root
+
+FILE_LOG=/tmp/abs_boot
+ABS_QUEUE=/tmp/run/abs-queue/
+PIPE=$ABS_QUEUE/abs_status_config.fifo
+
+start_service() {
+    # se nao existir aplicacao de usuario isntalada tambem deve sair
+    if [ ! -f $ABS_SCRIPT ]; then
+        if [ ! -f $ABS_SCRIPT_2 ]; then
+            exit 4
+        else
+            ABS_SCRIPT=$ABS_SCRIPT_2
+        fi
+    fi
+
+    # Cria a fifo para controle do LED
+    if [ ! -p "$PIPE" ] ; then
+        mkdir -p $ABS_QUEUE
+        chown user $ABS_QUEUE
+        mkfifo $PIPE 2>&1 >> $FILE_LOG
+    fi
+    echo `date` "Vai rodar o script $ABS_SCRIPT" >> /tmp/abs_boot
+
+    # definições do serviço que será disparado pelo sistema operacional, quando este chamar S99abs_conversor em rc.d
+    procd_open_instance
+    procd_set_param command "$PROG" "$ABS_SCRIPT"
+    procd_set_param respawn
+    procd_set_param user $ABSUSER
+    procd_close_instance
+}

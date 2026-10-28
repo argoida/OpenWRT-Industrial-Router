@@ -1,0 +1,361 @@
+config defaults
+    option syn_flood    1
+    option input        DROP
+    option output       ACCEPT
+    option forward      DROP
+# Uncomment this line to disable ipv6 rules
+    option disable_ipv6 1
+
+# Todas as zonas menos a ipsec tera a possibilidade de ACCEPT de forward, mas deixaremos isso desligado na sessao
+config zone
+    option name         wlan
+    list   network      wlan
+    option input        DROP
+    option output       ACCEPT
+    option forward      ACCEPT
+
+config zone
+    option name         wan
+    list   network      'wan'
+    option input        DROP
+    option output       ACCEPT
+    option forward      ACCEPT
+    option masq         1
+    option mtu_fix      1
+
+config zone
+    option name         wanCel
+    list   network      'wanCel'
+    option input        DROP
+    option output       ACCEPT
+    option forward      ACCEPT
+    option masq         1
+    option mtu_fix      1
+
+config zone
+    option name         ipsec
+    list   network      'ipsec'
+    option input        DROP
+    option output       ACCEPT
+    option forward      ACCEPT
+    option masq         1
+    option mtu_fix      1
+
+config zone
+    option name         'openvpn_fw'
+    list network        'openvpn'
+    option input        DROP
+    option output       ACCEPT
+    option forward      ACCEPT
+
+config zone
+    option name         'wanEth'
+    list network        'wanEth'
+    option input        DROP
+    option output       ACCEPT
+    option forward      ACCEPT
+
+config forwarding
+    option src          'wan'
+    option dest         'openvpn_fw'
+    option enabled      '0'
+
+config forwarding
+    option src          'openvpn_fw'
+    option dest         'wan'
+    option enabled      '0'
+
+config forwarding
+    option src          'ipsec'
+    option dest         'wan'
+    option enabled      '0'
+
+config forwarding
+    option src          'wan'
+    option dest         'ipsec'
+    option enabled      '0'
+
+config forwarding
+    option src          'wan'
+    option dest         'wanCel'
+    option enabled      '0'
+
+config forwarding
+    option src          'wanCel'
+    option dest         'wan'
+    option enabled      '0'
+
+config forwarding
+    option src          'wlan'
+    option dest         'wanCel'
+    option enabled      '0'
+
+config forwarding
+    option src          'wanCel'
+    option dest         'wlan'
+    option enabled      '0'
+
+config forwarding
+    option src          'wan'
+    option dest         'wanEth'
+    option enabled      '0'
+
+config forwarding
+    option src          'wanEth'
+    option dest         'wan'
+    option enabled      '0'
+
+config forwarding
+    option src          'wlan'
+    option dest         'wan'
+    option enabled      '0'
+
+config forwarding
+    option src          'wan'
+    option dest         'wlan'
+    option enabled      '0'
+
+config rule
+    option name         config-all-fix
+    option src          wan
+    list dest_ip        10.20.40.1
+#    option dest_port    23
+    option target       ACCEPT
+    option proto        tcp
+
+config rule
+	option name 'ovpn_http'
+	option src 'openvpn_fw'
+	option dest_port '80'
+	option target 'ACCEPT'
+	option proto 'tcp'
+	option enabled '1'
+	option src_ip '0.0.0.0/0 '
+
+config rule
+	option name 'ovpn_config'
+	option src 'openvpn_fw'
+	option dest_port '23'
+	option target 'ACCEPT'
+	option proto 'tcp'
+	option enabled '1'
+	option src_ip '0.0.0.0/0 '
+
+config rule
+	option name 'ipsec_http'
+	option src 'ipsec'
+	option dest_port '80'
+	option target 'ACCEPT'
+	option proto 'tcp'
+	option enabled '1'
+	option src_ip '0.0.0.0/0 '
+
+config rule
+	option name 'ipsec_config'
+	option src 'ipsec'
+	option dest_port '23'
+	option target 'ACCEPT'
+	option proto 'tcp'
+	option enabled '1'
+	option src_ip '0.0.0.0/0 '
+
+config rule
+	option name 'wanEth_http'
+	option src 'wanEth'
+	option dest_port '80'
+	option target 'ACCEPT'
+	option proto 'tcp'
+	option enabled '1'
+	option src_ip '0.0.0.0/0 '
+
+config rule
+	option name 'wan_http'
+	option src 'wan'
+	option dest_port '80'
+	option target 'ACCEPT'
+	option proto 'tcp'
+	option enabled '1'
+	option src_ip '0.0.0.0/0 '
+
+config rule
+	option name 'wanEth_config'
+	option src 'wanEth'
+	option dest_port '23'
+	option target 'ACCEPT'
+	option proto 'tcp'
+	option enabled '1'
+	option src_ip '0.0.0.0/0 '
+
+config rule
+	option name 'wan_config'
+	option src 'wan'
+	option dest_port '23'
+	option target 'ACCEPT'
+	option proto 'tcp'
+	option enabled '1'
+	option src_ip '0.0.0.0/0 '
+
+config rule
+    option name         Allow-DNS-wan
+    option src          wan
+    option dest_port    53
+    option target       ACCEPT
+    option proto        udp
+
+config rule
+    option name         Allow-DNS-wanCel
+    option src          wanCel
+    option dest_port    53
+    option target       ACCEPT
+    option proto        udp
+
+config rule
+    option name         Allow-DNS-openvpn_fw
+    option src          openvpn_fw
+    option dest_port    53
+    option target       ACCEPT
+    option proto        udp
+
+config rule
+    option name         Allow-DNS-opsec_fw
+    option src          ipsec
+    option dest_port    53
+    option target       ACCEPT
+    option proto        udp
+
+config rule
+    option name         Allow-DNS-wanEth
+    option src          wanEth
+    option dest_port    53
+    option target       ACCEPT
+    option proto        udp
+
+# We need to accept udp packets on port 68,
+# see https://dev.openwrt.org/ticket/4108
+config rule
+    option name         Allow-DHCP-Server-wlan-67
+    option src          wlan
+    option proto        udp
+    option dest_port    67
+    option target       ACCEPT
+    option family       ipv4
+
+config rule
+    option name         Allow-DHCP-Server-wlan-68
+    option src          wlan
+    option proto        udp
+    option dest_port    68
+    option target       ACCEPT
+    option family       ipv4
+
+config rule
+    option name         Allow-DHCP-Renew-wan-67
+    option src          wan
+    option proto        udp
+    option dest_port    67
+    option target       ACCEPT
+    option family       ipv4
+
+config rule
+    option name         Allow-DHCP-Renew-wan-68
+    option src          wan
+    option proto        udp
+    option dest_port    68
+    option target       ACCEPT
+    option family       ipv4
+
+config rule
+    option name         Allow-DHCP-Renew-wanCel
+    option src          wanCel
+    option proto        udp
+    option dest_port    68
+    option target       ACCEPT
+    option family       ipv4
+
+# Allow IPv4 ping
+config rule
+    option name         Allow-Ping
+    option src          wan
+    option proto        icmp
+    option icmp_type    echo-request
+    option family       ipv4
+    option target       ACCEPT
+
+# Allow IPv4 ping
+config rule
+    option name         Allow-Ping-wanEth
+    option src          wanEth
+    option proto        icmp
+    option icmp_type    echo-request
+    option family       ipv4
+    option target       ACCEPT
+
+# Allow IPv4 ping
+config rule
+    option name         Allow-Ping-ipsec
+    option src          ipsec
+    option proto        icmp
+    option icmp_type    echo-request
+    option family       ipv4
+    option target       ACCEPT
+
+config rule
+    option name         Allow-IGMP
+    option src          wan
+    option proto        igmp
+    option family       ipv4
+    option target       ACCEPT
+
+config rule
+    option name         'IPSec-ESP'
+    option src          'wan'
+    option proto        'esp'
+    option target       'ACCEPT'
+
+config rule
+    option name         'IPSec-IKE'
+    option src          'wan'
+    option dest_port    '500'
+    option proto        'udp'
+    option target       'ACCEPT'
+
+config rule
+    option name         'IPSec-NAT-T'
+    option src          'wan'
+    option dest_port    '4500'
+    option proto        'udp'
+    option target       'ACCEPT'
+
+config rule
+    option name         'IPSec-Auth-Header'
+    option src          'wan'
+    option proto        'ah'
+    option target       'ACCEPT'
+
+config rule
+    option name         'IPSec-ESP-Cel'
+    option src          'wanCel'
+    option proto        'esp'
+    option target       'ACCEPT'
+
+config rule
+    option name         'IPSec-IKE-Cel'
+    option src          'wanCel'
+    option dest_port    '500'
+    option proto        'udp'
+    option target       'ACCEPT'
+
+config rule
+    option name         'IPSec-NAT-T-Cel'
+    option src          'wanCel'
+    option dest_port    '4500'
+    option proto        'udp'
+    option target       'ACCEPT'
+
+config rule
+    option name         'IPSec-Auth-Header-Cel'
+    option src          'wanCel'
+    option proto        'ah'
+    option target       'ACCEPT'
+
+######  AQUI as regras de acesso para as seriais

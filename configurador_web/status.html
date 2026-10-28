@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" ng-app="absConfigConversor">
+  <head>
+    <meta charset="utf-8">
+    <title>ABS XU</title>
+		<script src="scripts/jquery.js"></script>    
+	</head>
+  <body>
+
+			<div id='waiting' style="visibility:hidden"><H1> <center>TRABALHANDO . . . </center></H1></div>
+			<div id="div_configurar_status" class='tags_configurar'></div>
+			<div id="load_fail_get_status"></div>
+			<div id="load_result" class='tags_configurar' hidden="hidden"></div>
+			<div id='div_store_html_loaded' hidden="hidden"></div>
+
+			<script>
+				var is_index_page = true;
+			</script>
+			<script src="scripts/adm_defines.js"></script>
+			<script src="scripts/adm_be_cmds.js"></script>
+			<script src="scripts/adm_load_save_cfgs.js"></script>
+			<script src="scripts/adm_show_hide.js"></script>
+			<script src="scripts/config_status_controls.js"></script>
+			<script>
+					$(document).ready(function () {
+						host_ip_device = null;	// para pegar o status de onde foi lido
+						get_html_and_show_status();
+					});
+			</script>
+  </body>
+</html>

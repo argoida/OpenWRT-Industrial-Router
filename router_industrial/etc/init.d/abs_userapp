@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2011 OpenWrt.org
+
+START=99
+
+USE_PROCD=1
+PROG=/bin/sh
+ABS_SCRIPT=/home/user/main.sh
+# O user tem que ser o root porque o conversor serial abre a porta 23 para configuracao
+ABSUSER=user
+
+## A aplicacao do conversor serial ethernet nao precisa do relogio inicializado
+#FILE_TO_CHECK=/var/run/local-clock-updated.redy
+## Pode disparar se tiver o serial number disponivel
+#FILE_TO_CHECK=/tmp/abs_serial_number
+
+start_service() {
+    # se ainda nao existir o arquivo necessario nem entra
+    #[ ! -f $FILE_TO_CHECK ] && exit 3
+    # se nao existir aplicacao de usuario isntalada tambem deve sair
+    [ ! -f $ABS_SCRIPT ] && exit 4
+
+    # definições do serviço que será disparado pelo sistema operacional, quando este chamar S99abs_conversor em rc.d
+    procd_open_instance
+    procd_set_param command "$PROG" "$ABS_SCRIPT"
+    procd_set_param respawn
+    procd_set_param user $ABSUSER
+    procd_close_instance
+}
+

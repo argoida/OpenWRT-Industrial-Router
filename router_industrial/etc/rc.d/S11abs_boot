@@ -1,0 +1,202 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2011 OpenWrt.org
+#
+#   ALEX 2018 07 05  Vamos pegar o serial number somente o /etc/abs_serial_number.
+#
+START=11
+
+USE_PROCD=0
+
+FILE_SERIAL=abs_serial_number
+FILE_DEST=/tmp/$FILE_SERIAL
+FILE_LOG=/tmp/abs_boot
+FILE_NETWORK_ORIG=/etc/config/network.orig
+FILE_NETWORK=/etc/config/network
+cel_modem_present=0
+cel_modem_enabled=0
+cel_modem_ttyACM_qtd=0
+serial_is_set=0
+#
+# importa lib que faz coisas para mais de um tipo de equipamento
+. /abs/machine_dependente_lib.sh --source-only
+
+check_abs_serial_number() {
+    # Colocar o numero serial deste equipamento ao alcance de todos
+    cp /etc/$FILE_SERIAL $FILE_DEST
+    #
+    # verifica se o numero serial esta setado diferente de 0
+    serial=`cat /etc/abs_serial_number | grep "ABS_serial=" | cut -d= -f2`
+    if [ "#$serial#" = "##" ] ; then
+        serial=0
+    fi
+    if [ $(( 0x$serial + 1 ))  = 1 ]; then
+        serial_is_set=0
+    else
+        serial_is_set=1
+        . $FILE_DEST
+    fi
+}
+
+is_cel_modem_present() {
+    if [ -c '/dev/ttyACM3' ]; then
+        ln -s /dev/ttyACM3 /dev/modem
+        cel_modem_present=1
+        cel_modem_ttyACM_qtd=`ls -l /dev/ttyACM* | wc -l`
+        #
+        # Aqui seleciona o chat script que deve ser usado pois depende do tipo de modem
+        cp /etc/chatscripts/3g.chat-$cel_modem_ttyACM_qtd-ACM /etc/chatscripts/3g.chat
+    else
+        cel_modem_present=0
+    fi
+}
+
+check_cel_modem() {
+    if [ $ABS_partnumber = "03" ]; then
+        testa_cel_modem=1
+    elif [ $ABS_partnumber = "04" ]; then
+        testa_cel_modem=1
+    else
+        testa_cel_modem=0
+    fi
+
+    if [ $testa_cel_modem = 1 ]; then
+        #
+        # Ver se o modem esta presente e habilitado
+        sleep 3   # esperar um pouco para que ele tenha desligado
+        machine_dependente liga_o_modem
+        sleep 3    # Esperar um pouco para garantir que o modem esteja ligado e os /dev/ttyACM? estejam presentes
+        for i in 1 2 3 4 5 6 7 8 9 0 1 2 3; do
+          is_cel_modem_present
+          if [ $cel_modem_present = 1 ]; then
+            break
+          fi
+          sleep 1
+        done
+        if [ $cel_modem_present = 1 ]; then
+            #
+            # caso o modem celular esteja presente o equipamento verificar se esta habilitado
+            cel_modem_enabled=`uci get network.wanCel.abs_enabled`
+            if [ "#$cel_modem_enabled#" = "##" ] ; then
+                cel_modem_enabled=0
+            fi
+            #
+            # Editamos o network mantendo o .orig intacto
+            # Modem 3g. Evitar do SO iniciar o uso dele sem que tenha sido totalmente configurado
+            uci get network.wanCel
+            if [ "$?" = 0 ]; then
+                uci delete network.wanCel
+                uci commit network
+            fi
+            if [ $cel_modem_enabled != 1 ]; then
+                # acerta a piscada para informar que tem modem celular mas nao esta habilitado
+                LEDSTATUS="INICIO_3GOFF"
+            fi
+        else
+            LEDSTATUS="INICIO_ETH"
+        fi
+    fi
+}
+
+fazer_no_primeiro_boot() {
+    if [ "#$machine#" = "#Onion Omega2#" ]; then
+      echo "\n\n Onion Omega2 - fazer o que for especifico"
+      # Tirar alguns scripts do boot
+      rm -f /etc/rc.d/S96led
+      rm -f /etc/rc.d/S98gpio_switch
+      rm -f /etc/rc.d/S99bootcount
+      rm -f /etc/rc.d/S99enablemodem
+      rm -f /etc/rc.d/S79updateHostname
+      rm -f /etc/rc.d/S80ucitrack
+    fi
+    if [ "#$machine#" = "#VoCore2#" ]; then
+      echo "\n\n VoCore2  - fazer o que for especifico"
+      # Tirar alguns scripts do boot
+      rm -f /etc/rc.d/S96led
+      rm -f /etc/rc.d/S94gpio_switch
+      rm -f /etc/rc.d/S99bootcount
+      rm -f /etc/rc.d/S99enablemodem
+      rm -f /etc/rc.d/S79updateHostname
+      rm -f /etc/rc.d/S80ucitrack
+    fi
+    #
+    # APARTIR DAQUI EH INDEPENDENTE DE FABRICANTE
+    #
+    # Evitar de entrar o ipsec com a configuracao default. Se nao existir o /etc/ipsec.conf o ipsec nao roda
+    mv /etc/ipsec.conf /etc/ipsec.conf.parado
+    #
+    # Fazer uma copia das configuracoes para restaurar o default de fabrica
+    DEF_CONFIGS=/abs/default_configs
+    mkdir -p $DEF_CONFIGS/etc/crontabs
+    cp -r /etc/config $DEF_CONFIGS/etc/config
+    cp -r /etc/ipsec* $DEF_CONFIGS/etc
+    cp -r /etc/openvpn $DEF_CONFIGS/etc
+    cp -r /etc/crontabs/root $DEF_CONFIGS/etc/crontabs
+    #
+    # Acertar as permissoes dos diretorios com o software proprio
+    chmod 700 /abs
+    chmod 700 /www
+    find /abs /www -type d -exec chmod 700 {} \;
+    find /abs /www -type f -exec chmod 600 {} \;
+    find /abs /www -name "*.sh" -exec chmod 700 {} \;
+    # Vamos garntir a ordem de execucao dos scripts no boot. Eles devem ser os ultimos a rodar
+    mv /etc/rc.d/S99abs_status_config /etc/rc.d/S99z_abs_status_config
+    mv /etc/rc.d/S99abs_conversor /etc/rc.d/S99zz_abs_conversor
+    #
+    # informar que precisa fazer o reboot
+    # Temos que esperar uns 40 segundos para que o processo do boot termine e as alteracoes passem a valer
+    (
+        sleep 40
+        echo "reboot" > /tmp/abs_faz_reboot
+    ) &
+}
+
+boot() {
+    echo `cat /proc/uptime` `date` " abs_boot entrando " >> $FILE_LOG
+    get_machine
+    LEDSTATUS="INICIO_3GON"
+    # prepara algumas coisa no SO para serem usadas posteriormente
+    echo "Inicializa o machine_dependente_lib no boot"
+    machine_dependente inicializa_no_boot
+    # Para garantir que se tiver modem, ele entre resetado. Desligamos primeiro, esperamos um pouco e religamos. Caso nao exista modem so vamos saber depois disso.
+    echo "Vai desligar o modem"
+    machine_dependente desliga_o_modem
+    # Aqui lig o led 17 para indicar poweron - vai entrar bem antes do que o led_loop em python
+    machine_dependente led_poweron
+    # E desliga o led de link caso esteja ligado
+    machine_dependente led_link_off
+    #
+    if [ ! -f /etc/rc.d/S99z_abs_status_config ] ; then
+        LEDSTATUS="WAIT_FOR_REBOOT"
+        fazer_no_primeiro_boot
+    fi
+    #
+    ## Caso ainta nao exista um network.orig copiar o network para ele para termos os 2
+    if [ ! -f $FILE_NETWORK_ORIG ] ; then
+        cp $FILE_NETWORK $FILE_NETWORK_ORIG
+    fi
+    #
+    # pode ter rebootado e nao ter retornado o arquivo original da configuracao da rede
+    if [ -f $FILE_NETWORK_ORIG ] ; then
+        cp $FILE_NETWORK_ORIG $FILE_NETWORK
+    fi
+    #
+    # trata o serail number
+    check_abs_serial_number
+    if [ $serial_is_set = 0 ]; then
+        #   fazer a piscada ser mais rapida para avisar o pessoal de montagem
+        LEDSTATUS="NO_SERIAL_NUMBER"
+    else
+        check_cel_modem
+    fi
+    #
+    # Agora acertar a piscada do LED
+    echo `cat /proc/uptime` `date` " LED deve ser $LEDSTATUS " >> $FILE_LOG
+    machine_dependente led_status $LEDSTATUS
+    #
+    # Iniciar o cron caso ainda nao esteja rodando
+    /etc/init.d/cron start
+    #
+    #   grava os status que foram coletados para compartilhar com o resto do sistema
+    echo -e "{\n  \"machine\" : \"$machine\",\n  \"serial_is_set\" : $serial_is_set,\n  \"cel_modem_present\" : $cel_modem_present,\n  \"cel_modem_enabled\" : $cel_modem_enabled,\n  \"cel_modem_ttyACM_qtd\" : $cel_modem_ttyACM_qtd\n}" > /tmp/hw_on_boot
+    echo `cat /proc/uptime` `date` " abs_boot saindo com tudo configurado " >> $FILE_LOG
+}

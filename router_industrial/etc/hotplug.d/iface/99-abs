@@ -1,0 +1,4 @@
+
+[ wan = "$INTERFACE" ] && {
+    echo "$ACTION  $DEVICE  $INTERFACE  "  `date` > /tmp/wan_up
+}

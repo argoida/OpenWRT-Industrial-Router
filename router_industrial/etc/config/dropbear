@@ -1,0 +1,8 @@
+config dropbear
+	option enable "no"
+	option PasswordAuth 'off'
+#	option PasswordAuth 'on'
+	option RootPasswordAuth 'off'
+#	option RootPasswordAuth 'on'
+	option Port         '22'
+#	option BannerFile   '/etc/banner'

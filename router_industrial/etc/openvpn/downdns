@@ -1,0 +1,2 @@
+#!/bin/sh 
+mv /tmp/resolv.conf.auto.hold /tmp/resolv.conf.auto
